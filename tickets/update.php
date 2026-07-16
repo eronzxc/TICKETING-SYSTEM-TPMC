@@ -14,34 +14,56 @@ $id = $input['id'] ?? '';
 
 if ($id === '') {
     http_response_code(400);
-    die(json_encode(['error' => 'Kulang ang ticket id.']));
+    die(json_encode(['error' => 'Ticket ID is required.']));
 }
 
-$department  = trim($input['department'] ?? '');
-$category    = trim($input['category'] ?? '');
-$priority    = trim($input['priority'] ?? '');
-$description = trim($input['description'] ?? '');
+// Only these fields can be edited here: Status, Due date, Date resolved,
+// and Remarks. We don't touch the original request (department, category,
+// priority, description) so the requester's submission is never
+// overwritten. Status changes go through this endpoint too (behind a
+// confirmation dialog) so it can't be changed by an accidental click.
+$status     = trim($input['status'] ?? '');
+$dueDate    = trim($input['due_date'] ?? '');
+$resolvedAt = trim($input['resolved_at'] ?? '');
+$remarks    = trim($input['remarks'] ?? '');
 
-if ($department === '' || $category === '' || $description === '') {
+if (!in_array($status, ['Open', 'In progress', 'Resolved'], true)) {
     http_response_code(400);
-    die(json_encode(['error' => 'Kulang ang mga required fields.']));
-}
-if (!in_array($priority, ['Low', 'Medium', 'High', 'Urgent'], true)) {
-    http_response_code(400);
-    die(json_encode(['error' => 'Invalid priority.']));
+    die(json_encode(['error' => 'Invalid status.']));
 }
 
-$stmt = $pdo->prepare('SELECT id FROM tickets WHERE id = ?');
+$stmt = $pdo->prepare('SELECT status, resolved_at, resolved_by FROM tickets WHERE id = ?');
 $stmt->execute([$id]);
-if (!$stmt->fetch()) {
+$existing = $stmt->fetch();
+if (!$existing) {
     http_response_code(404);
-    die(json_encode(['error' => 'Hindi nahanap ang ticket.']));
+    die(json_encode(['error' => 'Ticket not found.']));
+}
+
+$user = currentUser();
+$dueDateVal = $dueDate !== '' ? date('Y-m-d H:i:s', strtotime($dueDate)) : null;
+$remarksVal = $remarks !== '' ? $remarks : null;
+
+if ($status === 'Resolved') {
+    if ($existing['status'] !== 'Resolved') {
+        // Just got resolved now: record who resolved it and when.
+        $resolvedAtVal = $resolvedAt !== '' ? date('Y-m-d H:i:s', strtotime($resolvedAt)) : date('Y-m-d H:i:s');
+        $resolvedByVal = $user['fullname'];
+    } else {
+        // Was already resolved — keep the existing resolved_by, unless the
+        // Date resolved was intentionally changed in the form.
+        $resolvedAtVal = $resolvedAt !== '' ? date('Y-m-d H:i:s', strtotime($resolvedAt)) : $existing['resolved_at'];
+        $resolvedByVal = $existing['resolved_by'];
+    }
+} else {
+    $resolvedAtVal = null;
+    $resolvedByVal = null;
 }
 
 $stmt = $pdo->prepare(
-    'UPDATE tickets SET department = ?, category = ?, priority = ?, description = ?, updated_at = NOW() WHERE id = ?'
+    'UPDATE tickets SET status = ?, due_date = ?, resolved_at = ?, resolved_by = ?, remarks = ?, updated_at = NOW() WHERE id = ?'
 );
-$stmt->execute([$department, $category, $priority, $description, $id]);
+$stmt->execute([$status, $dueDateVal, $resolvedAtVal, $resolvedByVal, $remarksVal, $id]);
 
 $stmt = $pdo->prepare('SELECT * FROM tickets WHERE id = ?');
 $stmt->execute([$id]);
@@ -50,7 +72,7 @@ $ticket['attachments'] = $ticket['attachments_json'] ? json_decode($ticket['atta
 unset($ticket['attachments_json']);
 $ticket['created_by'] = $ticket['created_by'] !== null ? (int)$ticket['created_by'] : null;
 
-$stmt = $pdo->prepare('SELECT author, message AS text, created_at AS createdAt FROM ticket_comments WHERE ticket_id = ? ORDER BY created_at ASC');
+$stmt = $pdo->prepare('SELECT id, author, author_id AS authorId, message AS text, created_at AS createdAt, edited_at AS editedAt FROM ticket_comments WHERE ticket_id = ? ORDER BY created_at ASC');
 $stmt->execute([$id]);
 $ticket['comments'] = $stmt->fetchAll();
 

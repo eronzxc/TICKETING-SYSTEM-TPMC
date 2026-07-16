@@ -13,7 +13,7 @@ $password = $input['password'] ?? '';
 
 if ($username === '' || $password === '') {
     http_response_code(400);
-    die(json_encode(['error' => 'Kulang ang username o password.']));
+    die(json_encode(['error' => 'Username and password are required.']));
 }
 
 $stmt = $pdo->prepare('SELECT * FROM users WHERE username = ?');
@@ -22,7 +22,7 @@ $row = $stmt->fetch();
 
 if (!$row || !password_verify($password, $row['password_hash'])) {
     http_response_code(401);
-    die(json_encode(['error' => 'Mali ang username o password.']));
+    die(json_encode(['error' => 'Incorrect username or password.']));
 }
 
 $user = [

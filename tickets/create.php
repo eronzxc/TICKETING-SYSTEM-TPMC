@@ -13,9 +13,9 @@ $input = json_decode(file_get_contents('php://input'), true) ?? [];
 
 $user = currentUser();
 
-// Yung requester at department ay kinukuha na mula sa naka-login na account
-// (hindi na basta text field na pwedeng palitan), para tama at totoo yung
-// pagka-link ng ticket sa account na gumawa nito.
+// Requester and department are taken from the logged-in account (no
+// longer a free-text field that can be changed), so the ticket is
+// correctly and reliably linked to the account that created it.
 $requester   = $user['fullname'];
 $department  = $user['department'];
 $createdBy   = $user['id'];
@@ -26,7 +26,7 @@ $attachments = $input['attachments'] ?? [];
 
 if ($description === '') {
     http_response_code(400);
-    die(json_encode(['error' => 'Kulang ang mga required fields.']));
+    die(json_encode(['error' => 'Please fill in all required fields.']));
 }
 if (!in_array($priority, ['Low', 'Medium', 'High', 'Urgent'], true)) {
     $priority = 'Medium';

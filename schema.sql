@@ -1,5 +1,5 @@
 -- TPMC IT Concern Desk — database schema
--- Import this once sa phpMyAdmin (o via mysql CLI) sa host PC lang.
+-- Import this once in phpMyAdmin (or via mysql CLI) on the host PC only.
 
 CREATE DATABASE IF NOT EXISTS tpmc_ticketing
   CHARACTER SET utf8mb4
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- ========== TICKETS (for a later step — not wired up yet) ==========
+-- ========== TICKETS ==========
 CREATE TABLE IF NOT EXISTS tickets (
   id            VARCHAR(20)   PRIMARY KEY,          -- e.g. IT-2026-0001
   requester     VARCHAR(120)  NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS tickets (
   resolved_by   VARCHAR(120)  NULL
 ) ENGINE=InnoDB;
 
--- ========== TICKET ATTACHMENTS (for a later step) ==========
+-- ========== TICKET ATTACHMENTS ==========
 CREATE TABLE IF NOT EXISTS ticket_attachments (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   ticket_id     VARCHAR(20)   NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS ticket_attachments (
   FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ========== TICKET COMMENTS / IT REPLIES (for a later step) ==========
+-- ========== TICKET COMMENTS / IT REPLIES ==========
 CREATE TABLE IF NOT EXISTS ticket_comments (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   ticket_id     VARCHAR(20)   NOT NULL,

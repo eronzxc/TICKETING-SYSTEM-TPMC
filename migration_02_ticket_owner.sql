@@ -1,9 +1,9 @@
 -- migration_02_ticket_owner.sql
--- Patakbuhin ito sa phpMyAdmin (SQL tab, habang naka-select yung tpmc_ticketing database)
--- kasi na-import mo na yung schema.sql at migration_01_attachments.sql bago ito idinagdag.
+-- Run this in phpMyAdmin (SQL tab, with the tpmc_ticketing database selected)
+-- after schema.sql and migration_01_attachments.sql have already been applied.
 --
--- Layunin: i-link yung bawat ticket sa TOTOONG account (user id) na gumawa nito,
--- para malaman kung sino talaga ang pwedeng sumagot sa ticket (owner-only reply).
+-- Purpose: link each ticket to the ACTUAL account (user id) that created it,
+-- so we know exactly who is allowed to reply to the ticket (owner-only reply).
 
 USE tpmc_ticketing;
 
@@ -13,7 +13,7 @@ ALTER TABLE tickets
     FOREIGN KEY (created_by) REFERENCES users(id)
     ON DELETE SET NULL;
 
--- Note: yung mga LUMANG tickets (bago ma-apply itong migration) ay magkakaroon
--- ng created_by = NULL, dahil wala talagang naka-link na account dati.
--- Ibig sabihin: yung mga lumang tickets na 'yun, IT na lang ang makakareply sa kanila
--- (walang matching owner). Bagong tickets mula ngayon, tama na ang owner.
+-- Note: OLD tickets (created before this migration was applied) will have
+-- created_by = NULL, since there was no linked account back then. That
+-- means for those old tickets, only IT will be able to reply to them
+-- (no matching owner). New tickets from now on will have the correct owner.

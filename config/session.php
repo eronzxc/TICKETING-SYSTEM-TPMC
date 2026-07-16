@@ -1,9 +1,9 @@
 <?php
-// config/session.php — i-include ito sa simula ng bawat PHP file na kailangan malaman kung sino ang naka-login.
+// config/session.php — include this at the top of every PHP file that needs to know who is logged in.
 session_start();
 header('Content-Type: application/json');
 
-// Para hindi ma-cache ng browser ang session-dependent responses
+// So the browser doesn't cache session-dependent responses
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
 function currentUser() {
@@ -13,7 +13,7 @@ function currentUser() {
 function requireLogin() {
     if (!currentUser()) {
         http_response_code(401);
-        die(json_encode(['error' => 'Hindi naka-login.']));
+        die(json_encode(['error' => 'You are not logged in.']));
     }
 }
 
@@ -21,6 +21,6 @@ function requireIT() {
     requireLogin();
     if (($_SESSION['user']['department'] ?? '') !== 'IT Department') {
         http_response_code(403);
-        die(json_encode(['error' => 'IT Department lang ang may access dito.']));
+        die(json_encode(['error' => 'Only IT Department has access to this.']));
     }
 }

@@ -18,15 +18,15 @@ $confirm    = $input['confirmPassword'] ?? '';
 // ---- Validation ----
 if ($fullname === '' || $username === '' || $department === '' || $password === '') {
     http_response_code(400);
-    die(json_encode(['error' => 'Kulang ang mga fields.']));
+    die(json_encode(['error' => 'Please fill in all fields.']));
 }
 if (strlen($password) < 6) {
     http_response_code(400);
-    die(json_encode(['error' => 'Dapat hindi bababa sa 6 characters ang password.']));
+    die(json_encode(['error' => 'Password must be at least 6 characters.']));
 }
 if ($password !== $confirm) {
     http_response_code(400);
-    die(json_encode(['error' => 'Hindi magkatugma ang password at confirm password.']));
+    die(json_encode(['error' => 'Password and confirm password do not match.']));
 }
 
 // Check duplicate username
@@ -34,7 +34,7 @@ $stmt = $pdo->prepare('SELECT id FROM users WHERE username = ?');
 $stmt->execute([$username]);
 if ($stmt->fetch()) {
     http_response_code(409);
-    die(json_encode(['error' => 'Kuha na ang username na ito.']));
+    die(json_encode(['error' => 'This username is already taken.']));
 }
 
 $hash = password_hash($password, PASSWORD_DEFAULT);

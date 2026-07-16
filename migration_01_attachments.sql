@@ -1,8 +1,7 @@
 -- migration_01_attachments.sql
--- Patakbuhin ito sa phpMyAdmin (SQL tab, habang naka-select yung tpmc_ticketing database)
--- kasi na-import mo na yung schema.sql bago ito idinagdag.
+-- Run this in phpMyAdmin (SQL tab, with the tpmc_ticketing database selected)
+-- since you already imported schema.sql before this was added.
 
 USE tpmc_ticketing;
 
-ALTER TABLE tickets
-  ADD COLUMN attachments_json LONGTEXT NULL AFTER due_date;
+ALTER TABLE tickets ADD COLUMN attachments_json LONGTEXT NULL AFTER due_date;

@@ -485,73 +485,17 @@
         <div id="editFormStep" class="hidden">
           <div class="row">
             <div class="field">
-              <label>Department / Unit</label>
-              <select id="e_department" onchange="toggleEditOtherDept()">
-                <option value="">Select department...</option>
-                <option>Emergency Room</option>
-                <option>Outpatient Department</option>
-                <option>Station 3A</option>
-                <option>Station 3B</option>
-                <option>Station 3C</option>
-                <option>NICU</option>
-                <option>ICU</option>
-                <option>Hemodialysis</option>
-                <option>Laboratory</option>
-                <option>Radiology</option>
-                <option>Pharmacy</option>
-                <option>Medical Records</option>
-                <option>Admin</option>
-                <option>Billing</option>
-                <option>Human Resources</option>
-                <option>PhilHealth</option>
-                <option>PhilHealth Yakap</option>
-                <option>HMO</option>
-                <option>Cashier</option>
-                <option>Purchasing</option>
-                <option>CSR</option>
-                <option>Physical Rehab</option>
-                <option>Dietary</option>
-                <option>Engineering</option>
-                <option>Industrial</option>
-                <option>Eye Center</option>
-                <option>Audit</option>
-                <option>Accounting</option>
-                <option>Finance</option>
-                <option>Biomedical</option>
-                <option>Pulmonology</option>
-                <option>Heart Station</option>
-                <option>Audiometry</option>
-                <option>Admitting</option>
-                <option value="Others">Others (please specify)</option>
-              </select>
-              <input id="e_department_other" class="hidden" placeholder="Type department name" style="margin-top:8px;">
-            </div>
-          </div>
-          <div class="row">
-            <div class="field">
-              <label>Category</label>
-              <select id="e_category">
-                <option>Hardware</option>
-                <option>Network / Internet</option>
-                <option>Software / System</option>
-                <option>Printer</option>
-                <option>Account / Password</option>
-                <option>Others</option>
-              </select>
+              <label>Due date</label>
+              <input type="datetime-local" id="e_due_date">
             </div>
             <div class="field">
-              <label>Priority</label>
-              <select id="e_priority">
-                <option>Low</option>
-                <option>Medium</option>
-                <option>High</option>
-                <option>Urgent</option>
-              </select>
+              <label>Date resolved</label>
+              <input type="datetime-local" id="e_resolved_at">
             </div>
           </div>
           <div class="field">
-            <label>Concern details</label>
-            <textarea id="e_description"></textarea>
+            <label>Remarks</label>
+            <textarea id="e_remarks" placeholder="Internal notes (hal. root cause, parts palitan, atbp.)"></textarea>
           </div>
           <p class="err hidden" id="editError"></p>
         </div>
@@ -871,6 +815,7 @@ function normalizeTicket(t) {
     dueDate: t.due_date || t.dueDate,
     resolvedAt: t.resolved_at || t.resolvedAt || null,
     resolvedBy: t.resolved_by || t.resolvedBy || null,
+    remarks: t.remarks || '',
     attachments: t.attachments || [],
     comments: t.comments || []
   };
@@ -899,14 +844,41 @@ function toggleOtherDept() {
 }
 
 let editingTicketId = null;
+let editingCommentId = null;
 
-function toggleEditOtherDept() {
-  const sel = document.getElementById('e_department').value;
-  const otherInput = document.getElementById('e_department_other');
-  if (sel === 'Others') {
-    otherInput.classList.remove('hidden');
-  } else {
-    otherInput.classList.add('hidden');
+function startCommentEdit(ticketId, commentId) {
+  editingCommentId = commentId;
+  renderTicketDetail(ticketId);
+}
+
+function cancelCommentEdit(ticketId) {
+  editingCommentId = null;
+  renderTicketDetail(ticketId);
+}
+
+async function saveCommentEdit(ticketId, commentId) {
+  const textEl = document.getElementById('editReplyText_' + commentId);
+  const errEl = document.getElementById('editReplyError_' + commentId);
+  const text = textEl ? textEl.value.trim() : '';
+  if (!text) return;
+  try {
+    const res = await fetch(`${API_TICKETS}/comment_update.php`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ comment_id: commentId, text })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (errEl) { errEl.textContent = data.error || 'May naganap na error.'; errEl.classList.remove('hidden'); }
+      return;
+    }
+    const idx = tickets.findIndex(x => x.id === ticketId);
+    if (idx !== -1) tickets[idx] = { ...tickets[idx], comments: data.comments || [] };
+    editingCommentId = null;
+    renderTicketDetail(ticketId);
+  } catch (e) {
+    if (errEl) { errEl.textContent = 'Hindi makaconnect sa server.'; errEl.classList.remove('hidden'); }
   }
 }
 
@@ -926,6 +898,14 @@ function closeEditModal() {
   editingTicketId = null;
 }
 
+function toDatetimeLocalValue(isoLike) {
+  if (!isoLike) return '';
+  const d = new Date(isoLike);
+  if (isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function confirmEditTicket() {
   const t = tickets.find(x => x.id === editingTicketId);
   if (!t) { closeEditModal(); return; }
@@ -934,19 +914,9 @@ function confirmEditTicket() {
   document.getElementById('editConfirmStep').classList.add('hidden');
   document.getElementById('editFormStep').classList.remove('hidden');
 
-  const deptSel = document.getElementById('e_department');
-  const knownDepts = Array.from(deptSel.options).map(o => o.value).filter(v => v && v !== 'Others');
-  if (knownDepts.includes(t.department)) {
-    deptSel.value = t.department;
-    document.getElementById('e_department_other').classList.add('hidden');
-  } else {
-    deptSel.value = 'Others';
-    document.getElementById('e_department_other').classList.remove('hidden');
-    document.getElementById('e_department_other').value = t.department || '';
-  }
-  document.getElementById('e_category').value = t.category || 'Hardware';
-  document.getElementById('e_priority').value = t.priority || 'Medium';
-  document.getElementById('e_description').value = t.description || '';
+  document.getElementById('e_due_date').value = toDatetimeLocalValue(t.dueDate);
+  document.getElementById('e_resolved_at').value = toDatetimeLocalValue(t.resolvedAt);
+  document.getElementById('e_remarks').value = t.remarks || '';
 
   document.getElementById('editConfirmBtn').textContent = 'Save changes';
   document.getElementById('editConfirmBtn').setAttribute('onclick', 'saveTicketEdit()');
@@ -956,26 +926,16 @@ async function saveTicketEdit() {
   const errEl = document.getElementById('editError');
   errEl.classList.add('hidden');
 
-  let department = document.getElementById('e_department').value;
-  if (department === 'Others') {
-    department = document.getElementById('e_department_other').value.trim();
-  }
-  const category = document.getElementById('e_category').value;
-  const priority = document.getElementById('e_priority').value;
-  const description = document.getElementById('e_description').value.trim();
-
-  if (!department || !category || !description) {
-    errEl.textContent = 'Kulang ang mga required fields.';
-    errEl.classList.remove('hidden');
-    return;
-  }
+  const dueDate = document.getElementById('e_due_date').value;
+  const resolvedAt = document.getElementById('e_resolved_at').value;
+  const remarks = document.getElementById('e_remarks').value.trim();
 
   try {
     const res = await fetch(`${API_TICKETS}/update.php`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: editingTicketId, department, category, priority, description })
+      body: JSON.stringify({ id: editingTicketId, due_date: dueDate, resolved_at: resolvedAt, remarks })
     });
     const data = await res.json();
     if (!res.ok) {
@@ -1203,7 +1163,8 @@ async function updateStatus(id, status) {
 }
 
 async function postReply(id) {
-  if (!isIT()) return;
+  const t = tickets.find(x => x.id === id);
+  if (!t || !canReplyTo(t)) return;
   const textEl = document.getElementById('replyText_' + id);
   const text = textEl ? textEl.value.trim() : '';
   if (!text) return;
@@ -1283,6 +1244,7 @@ function renderTickets() {
 
 async function openTicketDetail(id) {
   selectedTicketId = id;
+  editingCommentId = null;
   renderTickets();
   document.getElementById('ticketDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   try {
@@ -1298,6 +1260,7 @@ async function openTicketDetail(id) {
 
 function closeTicketDetail() {
   selectedTicketId = null;
+  editingCommentId = null;
   const panel = document.getElementById('ticketDetail');
   panel.classList.add('hidden');
   panel.innerHTML = '';
@@ -1332,10 +1295,7 @@ function renderTicketDetail(id) {
           <h2>#${t.id} — ${escapeHTML(t.category)}</h2>
           <p class="meta">${escapeHTML(t.department||'')} · ${escapeHTML(t.requester||'')} · ${dateStr}</p>
         </div>
-        <div class="ticket-detail-header-actions" style="display:flex;gap:8px;align-items:center;">
-          ${isIT() ? `<button class="btn-secondary" style="width:auto;" onclick="openEditModal('${t.id}')" title="Ctrl+E">✎ Edit</button>` : ``}
-          <button class="ticket-detail-close" onclick="closeTicketDetail()">✕</button>
-        </div>
+        <button class="ticket-detail-close" onclick="closeTicketDetail()">✕</button>
       </div>
       <div class="detail-comment-meta">${escapeHTML(t.requester||'Requester')} reported:</div>
       <div class="detail-comment">${escapeHTML(t.description)}</div>
@@ -1344,10 +1304,30 @@ function renderTicketDetail(id) {
         <label class="meta" style="display:block;margin-bottom:8px;">Replies</label>
         ${
           (Array.isArray(t.comments) && t.comments.length)
-            ? t.comments.map(c => `
-              <div class="detail-comment-meta">${escapeHTML(c.author||'IT')} · ${c.createdAt ? new Date(c.createdAt).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : ''}</div>
-              <div class="detail-comment">${escapeHTML(c.text)}</div>
-            `).join('')
+            ? t.comments.map(c => {
+                const isMine = currentUser && c.authorId !== null && c.authorId !== undefined && Number(c.authorId) === Number(currentUser.id);
+                const editedTag = c.editedAt ? ' <span class="meta">(edited)</span>' : '';
+                if (editingCommentId === c.id) {
+                  return `
+                    <div class="detail-comment-meta">${escapeHTML(c.author||'IT')} · ${c.createdAt ? new Date(c.createdAt).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : ''}</div>
+                    <div class="field">
+                      <textarea id="editReplyText_${c.id}">${escapeHTML(c.text)}</textarea>
+                      <div style="display:flex;gap:8px;margin-top:6px;">
+                        <button class="primary" style="width:auto;" onclick="saveCommentEdit('${t.id}','${c.id}')">Save</button>
+                        <button class="btn-secondary" style="width:auto;" onclick="cancelCommentEdit('${t.id}')">Cancel</button>
+                      </div>
+                      <p class="err hidden" id="editReplyError_${c.id}"></p>
+                    </div>
+                  `;
+                }
+                return `
+                  <div class="detail-comment-meta" style="display:flex;align-items:center;justify-content:space-between;">
+                    <span>${escapeHTML(c.author||'IT')} · ${c.createdAt ? new Date(c.createdAt).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : ''}${editedTag}</span>
+                    ${isMine ? `<button class="btn-secondary" style="width:auto;padding:1px 8px;font-size:12px;" onclick="startCommentEdit('${t.id}','${c.id}')">✎ Edit</button>` : ``}
+                  </div>
+                  <div class="detail-comment">${escapeHTML(c.text)}</div>
+                `;
+              }).join('')
             : `<p class="meta">No replies yet.</p>`
         }
       </div>
@@ -1363,7 +1343,10 @@ function renderTicketDetail(id) {
     </div>
     <div class="ticket-detail-side">
       <div class="side-field">
-        <label>Status</label>
+        <label style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Status</span>
+          ${isIT() ? `<button class="btn-secondary" style="width:auto;padding:2px 10px;font-size:12px;" onclick="openEditModal('${t.id}')" title="Ctrl+E">✎ Edit ticket</button>` : ``}
+        </label>
         ${
           isIT()
             ? `<div class="side-status-btns">
@@ -1410,6 +1393,10 @@ function renderTicketDetail(id) {
       <div class="side-field">
         <label>Due date</label>
         <div class="side-value">${t.dueDate ? new Date(t.dueDate).toLocaleString('en-PH',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}) : '—'}</div>
+      </div>
+      <div class="side-field">
+        <label>Remarks</label>
+        <div class="side-value">${t.remarks ? escapeHTML(t.remarks) : '—'}</div>
       </div>
     </div>
   `;

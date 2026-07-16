@@ -1,6 +1,6 @@
 <?php
-// config/db.php — isang lugar lang ito para sa database connection settings.
-// I-adjust kung ibang username/password ang gamit mo sa MySQL (default XAMPP: root, walang password).
+// config/db.php — single place for the database connection settings.
+// Adjust this if you use a different MySQL username/password (default XAMPP: root, no password).
 
 $DB_HOST = 'localhost';
 $DB_NAME = 'tpmc_ticketing';
