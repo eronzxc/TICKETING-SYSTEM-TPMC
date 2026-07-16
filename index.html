@@ -479,10 +479,20 @@
       </div>
       <div class="modal-body">
         <div id="editConfirmStep">
-          <p class="sub">Sigurado ka bang gusto mong i-edit ang ticket na ito?</p>
-          <p class="meta" style="margin-top:8px;">Baka napindot lang nang hindi sinasadya. I-confirm mo muna bago ka makapasok sa edit mode.</p>
+          <p class="sub">Are you sure you want to edit this ticket?</p>
+          <p class="meta" style="margin-top:8px;">This helps prevent accidental clicks. Please confirm before entering edit mode.</p>
         </div>
         <div id="editFormStep" class="hidden">
+          <div class="row">
+            <div class="field">
+              <label>Status</label>
+              <select id="e_status">
+                <option>Open</option>
+                <option>In progress</option>
+                <option>Resolved</option>
+              </select>
+            </div>
+          </div>
           <div class="row">
             <div class="field">
               <label>Due date</label>
@@ -495,7 +505,7 @@
           </div>
           <div class="field">
             <label>Remarks</label>
-            <textarea id="e_remarks" placeholder="Internal notes (hal. root cause, parts palitan, atbp.)"></textarea>
+            <textarea id="e_remarks" placeholder="Internal notes (e.g. root cause, parts replaced, etc.)"></textarea>
           </div>
           <p class="err hidden" id="editError"></p>
         </div>
@@ -634,7 +644,7 @@
 </div>
 
 <script>
-// Auth at tickets na parehong gamit MySQL/PHP
+// Auth and tickets both use MySQL/PHP
 const API_AUTH = "/ticketing-system-tpmc/auth";
 const API_TICKETS = "/ticketing-system-tpmc/tickets";
 
@@ -648,8 +658,8 @@ function isIT() {
   return !!(currentUser && currentUser.department === 'IT Department');
 }
 
-// Person-to-person lang: IT, o yung talagang gumawa ng ticket (owner) lang
-// ang makakareply — hindi lahat ng miyembro ng department na 'yun.
+// Person-to-person only: IT, or whoever actually created the ticket (the
+// owner) — not just any member of that department.
 function canReplyTo(t) {
   if (!currentUser) return false;
   if (isIT()) return true;
@@ -667,8 +677,8 @@ function openSubmitModal() {
   confirmBtn.setAttribute('onclick', 'submitTicket()');
   document.getElementById('submitView').classList.remove('hidden');
 
-  // Name at Department ay kinukuha na mula sa naka-login na account
-  // (server-side na rin ang nagpapatupad nito), kaya naka-lock na lang ito rito.
+  // Name and Department are taken from the logged-in account
+  // (also enforced server-side), so they're locked here.
   const nameEl = document.getElementById('f_requester');
   const deptEl = document.getElementById('f_department');
   if (currentUser) {
@@ -728,14 +738,14 @@ async function register() {
     });
     const data = await res.json();
     if (!res.ok) {
-      errEl.textContent = data.error || "May naganap na error. Subukan ulit.";
+      errEl.textContent = data.error || "Something went wrong. Please try again.";
       errEl.classList.remove('hidden');
       return;
     }
     errEl.classList.add('hidden');
     enterDashboard(data.user);
   } catch (e) {
-    errEl.textContent = "Hindi ma-reach ang server. Tiyaking naka-start ang Apache/MySQL sa XAMPP.";
+    errEl.textContent = "Could not reach the server. Make sure Apache/MySQL is running in XAMPP.";
     errEl.classList.remove('hidden');
   }
 }
@@ -754,14 +764,14 @@ async function login() {
     });
     const data = await res.json();
     if (!res.ok) {
-      errEl.textContent = data.error || "Mali ang username o password.";
+      errEl.textContent = data.error || "Incorrect username or password.";
       errEl.classList.remove('hidden');
       return;
     }
     errEl.classList.add('hidden');
     enterDashboard(data.user);
   } catch (e) {
-    errEl.textContent = "Hindi ma-reach ang server. Tiyaking naka-start ang Apache/MySQL sa XAMPP.";
+    errEl.textContent = "Could not reach the server. Make sure Apache/MySQL is running in XAMPP.";
     errEl.classList.remove('hidden');
   }
 }
@@ -870,7 +880,7 @@ async function saveCommentEdit(ticketId, commentId) {
     });
     const data = await res.json();
     if (!res.ok) {
-      if (errEl) { errEl.textContent = data.error || 'May naganap na error.'; errEl.classList.remove('hidden'); }
+      if (errEl) { errEl.textContent = data.error || 'Something went wrong.'; errEl.classList.remove('hidden'); }
       return;
     }
     const idx = tickets.findIndex(x => x.id === ticketId);
@@ -878,7 +888,7 @@ async function saveCommentEdit(ticketId, commentId) {
     editingCommentId = null;
     renderTicketDetail(ticketId);
   } catch (e) {
-    if (errEl) { errEl.textContent = 'Hindi makaconnect sa server.'; errEl.classList.remove('hidden'); }
+    if (errEl) { errEl.textContent = 'Could not connect to the server.'; errEl.classList.remove('hidden'); }
   }
 }
 
@@ -910,10 +920,11 @@ function confirmEditTicket() {
   const t = tickets.find(x => x.id === editingTicketId);
   if (!t) { closeEditModal(); return; }
 
-  // Palitan sa edit form view, i-prefill lahat ng existing values.
+  // Switch to the edit form view and prefill all existing values.
   document.getElementById('editConfirmStep').classList.add('hidden');
   document.getElementById('editFormStep').classList.remove('hidden');
 
+  document.getElementById('e_status').value = t.status || 'Open';
   document.getElementById('e_due_date').value = toDatetimeLocalValue(t.dueDate);
   document.getElementById('e_resolved_at').value = toDatetimeLocalValue(t.resolvedAt);
   document.getElementById('e_remarks').value = t.remarks || '';
@@ -926,6 +937,7 @@ async function saveTicketEdit() {
   const errEl = document.getElementById('editError');
   errEl.classList.add('hidden');
 
+  const status = document.getElementById('e_status').value;
   const dueDate = document.getElementById('e_due_date').value;
   const resolvedAt = document.getElementById('e_resolved_at').value;
   const remarks = document.getElementById('e_remarks').value.trim();
@@ -935,11 +947,11 @@ async function saveTicketEdit() {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: editingTicketId, due_date: dueDate, resolved_at: resolvedAt, remarks })
+      body: JSON.stringify({ id: editingTicketId, status, due_date: dueDate, resolved_at: resolvedAt, remarks })
     });
     const data = await res.json();
     if (!res.ok) {
-      errEl.textContent = data.error || 'May naganap na error.';
+      errEl.textContent = data.error || 'Something went wrong.';
       errEl.classList.remove('hidden');
       return;
     }
@@ -949,7 +961,7 @@ async function saveTicketEdit() {
     renderTickets();
     if (selectedTicketId === data.ticket.id) renderTicketDetail(data.ticket.id);
   } catch (e) {
-    errEl.textContent = 'Hindi makaconnect sa server.';
+    errEl.textContent = 'Could not connect to the server.';
     errEl.classList.remove('hidden');
   }
 }
@@ -1058,13 +1070,13 @@ async function submitTicket() {
     });
     const data = await res.json();
     if (!res.ok) {
-      errEl.textContent = data.error || "May naganap na error sa pag-submit.";
+      errEl.textContent = data.error || "Something went wrong while submitting.";
       errEl.classList.remove('hidden');
       return;
     }
     ticket = normalizeTicket(data.ticket);
   } catch (e) {
-    errEl.textContent = "Hindi ma-reach ang server. Tiyaking naka-start ang Apache/MySQL sa XAMPP.";
+    errEl.textContent = "Could not reach the server. Make sure Apache/MySQL is running in XAMPP.";
     errEl.classList.remove('hidden');
     return;
   }
@@ -1100,13 +1112,6 @@ function resetForm() {
 
 function ticketHTML(t, withActions) {
   const statusClass = 's-' + t.status.replace(' ', '-');
-  let actions = '';
-  if (withActions) {
-    actions = `<div class="status-actions">` +
-      ['Open','In progress','Resolved'].map(s =>
-        `<button class="${s===t.status?'current':''}" ${s===t.status?'disabled':''} onclick="updateStatus('${t.id}','${s}')">${s}</button>`
-      ).join('') + `</div>`;
-  }
   const meta = t.department ? `<p class="meta">${escapeHTML(t.department)} · ${escapeHTML(t.requester||'')}</p>` : '';
   const dateStr = t.createdAt ? `<p class="meta">${new Date(t.createdAt).toLocaleString('en-PH',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}</p>` : '';
   let attachmentHTML = '';
@@ -1119,7 +1124,7 @@ function ticketHTML(t, withActions) {
     }).join('');
     attachmentHTML = `<div class="ticket-attachment">${items}</div>`;
   } else if (t.attachment && t.attachment.dataUrl) {
-    // backward compat sa mga lumang ticket na single-attachment pa
+    // backward compat for older tickets that only had a single attachment
     attachmentHTML = t.attachment.type && t.attachment.type.startsWith('image/')
       ? `<div class="ticket-attachment"><img src="${t.attachment.dataUrl}" alt="${escapeHTML(t.attachment.name)}" onclick="window.open('${t.attachment.dataUrl.replace(/'/g,"\\'")}', '_blank')"></div>`
       : `<div class="ticket-attachment"><a class="file-link" href="${t.attachment.dataUrl}" download="${escapeHTML(t.attachment.name)}">📎 ${escapeHTML(t.attachment.name)}</a></div>`;
@@ -1134,7 +1139,6 @@ function ticketHTML(t, withActions) {
       ${dateStr}
       <span class="badge p-${t.priority}">${t.priority}</span>
       <span class="badge ${statusClass}">${t.status}</span>
-      ${actions}
     </div>
   `;
 }
@@ -1146,21 +1150,6 @@ function escapeHTML(str) {
 }
 
 let selectedTicketId = null;
-
-async function updateStatus(id, status) {
-  if (!isIT()) return;
-  try {
-    const res = await fetch(`${API_TICKETS}/update_status.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ id, status })
-    });
-    if (!res.ok) return;
-  } catch (e) { return; }
-  await loadTickets();
-  if (selectedTicketId === id) openTicketDetail(id);
-}
 
 async function postReply(id) {
   const t = tickets.find(x => x.id === id);
@@ -1254,7 +1243,7 @@ async function openTicketDetail(id) {
       const full = normalizeTicket(data.ticket);
       tickets = tickets.map(t => t.id === id ? { ...t, ...full } : t);
     }
-  } catch (e) { /* mananatili yung existing data sa memory */ }
+  } catch (e) { /* keep the existing data in memory */ }
   if (selectedTicketId === id) renderTicketDetail(id);
 }
 
@@ -1347,16 +1336,8 @@ function renderTicketDetail(id) {
           <span>Status</span>
           ${isIT() ? `<button class="btn-secondary" style="width:auto;padding:2px 10px;font-size:12px;" onclick="openEditModal('${t.id}')" title="Ctrl+E">✎ Edit ticket</button>` : ``}
         </label>
-        ${
-          isIT()
-            ? `<div class="side-status-btns">
-                ${['Open','In progress','Resolved'].map(s =>
-                  `<button class="${s===t.status?'current':''}" ${s===t.status?'disabled':''} onclick="updateStatus('${t.id}','${s}')">${s}</button>`
-                ).join('')}
-              </div>`
-            : `<div class="side-value"><span class="badge s-${t.status.replace(' ','-')}">${t.status}</span></div>
-               <p class="meta" style="margin-top:6px;">Only IT can change the status.</p>`
-        }
+        <div class="side-value"><span class="badge s-${t.status.replace(' ','-')}">${t.status}</span></div>
+        ${!isIT() ? `<p class="meta" style="margin-top:6px;">Only IT can change the status.</p>` : ``}
       </div>
       <div class="side-field">
         <label>Priority</label>
