@@ -524,7 +524,7 @@
           </div>
         </div>
         <div class="field">
-          <label>Concern details</label>
+          <label>Concern details (optional)</label>
           <textarea id="f_description" placeholder="Describe the issue..."></textarea>
         </div>
         <div class="field">
@@ -1167,7 +1167,7 @@ async function submitTicket() {
   const dueDateInput = document.getElementById('f_due_date').value;
   const errEl = document.getElementById('submitError');
 
-  if (!requester || !department || !description) {
+  if (!requester || !department) {
     errEl.textContent = "Please fill in all required fields.";
     errEl.classList.remove('hidden');
     return;
@@ -1260,7 +1260,7 @@ function ticketHTML(t, withActions) {
     <div class="ticket-body">
       ${meta}
       <p style="font-weight:500;margin:0 0 4px;">${escapeHTML(t.category)}</p>
-      <p class="desc">${escapeHTML(t.description)}</p>
+      <p class="desc">${t.description ? escapeHTML(t.description) : 'No additional details provided.'}</p>
       ${attachmentHTML}
       ${dateStr}
       <span class="badge p-${t.priority}">${t.priority}</span>
@@ -1413,7 +1413,7 @@ function renderTicketDetail(id) {
         <button class="ticket-detail-close" onclick="closeTicketDetail()">✕</button>
       </div>
       <div class="detail-comment-meta">${escapeHTML(t.requester||'Requester')} reported:</div>
-      <div class="detail-comment">${escapeHTML(t.description)}</div>
+      <div class="detail-comment">${t.description ? escapeHTML(t.description) : 'No additional details provided.'}</div>
       ${attachmentHTML}
       <div class="detail-replies" style="margin-top:20px;">
         <label class="meta" style="display:block;margin-bottom:8px;">Replies</label>

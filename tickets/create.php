@@ -26,7 +26,7 @@ $priority    = trim($input['priority'] ?? '');
 $description = trim($input['description'] ?? '');
 $attachments = $input['attachments'] ?? [];
 
-if ($requester === '' || $department === '' || $description === '') {
+if ($requester === '' || $department === '') {
     http_response_code(400);
     die(json_encode(['error' => 'Please fill in all required fields.']));
 }
