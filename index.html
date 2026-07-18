@@ -195,7 +195,8 @@
   }
   .status-actions button.current { opacity: 0.5; cursor: default; }
   .filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-  .filters input, .filters select { width: auto; flex: 1; min-width: 140px; }
+  .filters input { flex: 1; min-width: 200px; }
+  .filters select { flex: 0 0 auto; width: 160px; }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
   .stat { background: var(--surface-2); border-radius: 8px; padding: 12px; }
   .stat .num { font-size: 22px; font-weight: 600; }
@@ -708,6 +709,13 @@
           <option>Open</option>
           <option>In progress</option>
           <option>Resolved</option>
+        </select>
+        <select id="priorityFilter" onchange="renderTickets()">
+          <option value="All">All priorities</option>
+          <option>Urgent</option>
+          <option>High</option>
+          <option>Medium</option>
+          <option>Low</option>
         </select>
         <select id="categoryFilter" onchange="renderTickets()">
           <option value="All">All categories</option>
@@ -1351,10 +1359,12 @@ function summaryOf(t) {
 function renderTickets() {
   const search = document.getElementById('searchInput').value.toLowerCase();
   const statusFilter = document.getElementById('statusFilter').value;
+  const priorityFilter = document.getElementById('priorityFilter').value;
   const categoryFilter = document.getElementById('categoryFilter').value;
 
   const filtered = tickets.filter(t => {
     if (statusFilter !== 'All' && t.status !== statusFilter) return false;
+    if (priorityFilter !== 'All' && t.priority !== priorityFilter) return false;
     if (categoryFilter !== 'All' && t.category !== categoryFilter) return false;
     if (search) {
       const hay = `${t.id} ${t.requester} ${t.department} ${t.description}`.toLowerCase();
