@@ -969,6 +969,17 @@ function toggleOtherDept() {
 }
 
 let editingTicketId = null;
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const action = btn.getAttribute('data-action');
+  const ticketId = btn.getAttribute('data-ticket-id');
+  const commentId = btn.getAttribute('data-comment-id');
+  if (action === 'start-comment-edit') startCommentEdit(ticketId, commentId);
+  else if (action === 'save-comment-edit') saveCommentEdit(ticketId, commentId);
+  else if (action === 'cancel-comment-edit') cancelCommentEdit(ticketId);
+});
+
 let editingCommentId = null;
 
 function startCommentEdit(ticketId, commentId) {
@@ -986,6 +997,7 @@ async function saveCommentEdit(ticketId, commentId) {
   const errEl = document.getElementById('editReplyError_' + commentId);
   const text = textEl ? textEl.value.trim() : '';
   if (!text) return;
+  if (!confirm('Save changes to this reply?')) return;
   try {
     const res = await fetch(`${API_TICKETS}/comment_update.php`, {
       method: 'POST',
@@ -1422,14 +1434,14 @@ function renderTicketDetail(id) {
             ? t.comments.map(c => {
                 const isMine = currentUser && c.authorId !== null && c.authorId !== undefined && Number(c.authorId) === Number(currentUser.id);
                 const editedTag = c.editedAt ? ' <span class="meta">(edited)</span>' : '';
-                if (editingCommentId === c.id) {
+                if (String(editingCommentId) === String(c.id)) {
                   return `
                     <div class="detail-comment-meta">${escapeHTML(c.author||'IT')} · ${c.createdAt ? new Date(c.createdAt).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : ''}</div>
                     <div class="field">
                       <textarea id="editReplyText_${c.id}">${escapeHTML(c.text)}</textarea>
                       <div style="display:flex;gap:8px;margin-top:6px;">
-                        <button class="primary" style="width:auto;" onclick="saveCommentEdit('${t.id}','${c.id}')">Save</button>
-                        <button class="btn-secondary" style="width:auto;" onclick="cancelCommentEdit('${t.id}')">Cancel</button>
+                        <button type="button" class="primary" style="width:auto;" data-action="save-comment-edit" data-ticket-id="${t.id}" data-comment-id="${c.id}">Save</button>
+                        <button type="button" class="btn-secondary" style="width:auto;" data-action="cancel-comment-edit" data-ticket-id="${t.id}">Cancel</button>
                       </div>
                       <p class="err hidden" id="editReplyError_${c.id}"></p>
                     </div>
@@ -1438,7 +1450,7 @@ function renderTicketDetail(id) {
                 return `
                   <div class="detail-comment-meta" style="display:flex;align-items:center;justify-content:space-between;">
                     <span>${escapeHTML(c.author||'IT')} · ${c.createdAt ? new Date(c.createdAt).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : ''}${editedTag}</span>
-                    ${isMine ? `<button class="btn-secondary" style="width:auto;padding:1px 8px;font-size:12px;" onclick="startCommentEdit('${t.id}','${c.id}')">✎ Edit</button>` : ``}
+                    ${isMine ? `<button type="button" class="btn-secondary" style="width:auto;padding:1px 8px;font-size:12px;" data-action="start-comment-edit" data-ticket-id="${t.id}" data-comment-id="${c.id}">✎ Edit</button>` : ``}
                   </div>
                   <div class="detail-comment">${escapeHTML(c.text)}</div>
                 `;
