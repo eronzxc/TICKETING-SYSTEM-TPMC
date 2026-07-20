@@ -196,7 +196,9 @@
   .status-actions button.current { opacity: 0.5; cursor: default; }
   .filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
   .filters input, .filters select { width: auto; flex: 1; min-width: 140px; }
-  .filters select#statusFilter, .filters select#priorityFilter, .filters select#departmentFilter { flex: 0 0 auto; width: 150px; min-width: 0; }
+  .filters select#statusFilter, .filters select#priorityFilter, .filters select#departmentFilter, .filters select#dateRangeFilter { flex: 0 0 auto; width: 150px; min-width: 0; }
+  .date-range-group { display: flex; gap: 8px; flex: 0 0 auto; }
+  .date-range-group input[type=date] { width: 150px; flex: 0 0 auto; min-width: 0; }
   .filter-toggle {
     display: flex;
     align-items: center;
@@ -753,6 +755,17 @@
           <input type="checkbox" id="myTicketsFilter" onchange="renderTickets()">
           <span>My tickets only</span>
         </label>
+        <select id="dateRangeFilter" onchange="onDateRangeChange()">
+          <option value="All">Any date requested</option>
+          <option value="Today">Today</option>
+          <option value="ThisWeek">This week</option>
+          <option value="ThisMonth">This month</option>
+          <option value="Custom">Custom range...</option>
+        </select>
+        <span id="customDateRange" class="date-range-group hidden">
+          <input type="date" id="dateFrom" onchange="renderTickets()">
+          <input type="date" id="dateTo" onchange="renderTickets()">
+        </span>
       </div>
       <div class="ticket-table-wrap">
         <table class="ticket-table">
@@ -1383,6 +1396,43 @@ function summaryOf(t) {
   return first.length > 60 ? first.slice(0, 60) + '…' : (first || t.category);
 }
 
+function onDateRangeChange() {
+  const val = document.getElementById('dateRangeFilter').value;
+  document.getElementById('customDateRange').classList.toggle('hidden', val !== 'Custom');
+  renderTickets();
+}
+
+// Returns [startDate, endDate] (inclusive, local time) for the selected preset/custom range, or null for 'All'.
+function getDateRangeBounds() {
+  const val = document.getElementById('dateRangeFilter').value;
+  const startOfDay = d => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
+  const endOfDay = d => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
+  const now = new Date();
+
+  if (val === 'Today') {
+    return [startOfDay(now), endOfDay(now)];
+  }
+  if (val === 'ThisWeek') {
+    const day = now.getDay(); // 0 = Sunday
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((day + 6) % 7)); // back up to Monday
+    return [startOfDay(monday), endOfDay(now)];
+  }
+  if (val === 'ThisMonth') {
+    const first = new Date(now.getFullYear(), now.getMonth(), 1);
+    return [startOfDay(first), endOfDay(now)];
+  }
+  if (val === 'Custom') {
+    const fromVal = document.getElementById('dateFrom').value;
+    const toVal = document.getElementById('dateTo').value;
+    const from = fromVal ? startOfDay(new Date(fromVal + 'T00:00:00')) : null;
+    const to = toVal ? endOfDay(new Date(toVal + 'T00:00:00')) : null;
+    if (!from && !to) return null;
+    return [from, to];
+  }
+  return null; // 'All'
+}
+
 function populateDepartmentFilter() {
   const sel = document.getElementById('departmentFilter');
   const current = sel.value;
@@ -1403,6 +1453,7 @@ function renderTickets() {
   const departmentFilter = document.getElementById('departmentFilter').value;
   const overdueOnly = document.getElementById('overdueFilter').checked;
   const myTicketsOnly = document.getElementById('myTicketsFilter').checked;
+  const dateRange = getDateRangeBounds();
 
   const filtered = tickets.filter(t => {
     if (statusFilter !== 'All' && t.status !== statusFilter) return false;
@@ -1415,6 +1466,13 @@ function renderTickets() {
     }
     if (myTicketsOnly) {
       if (!currentUser || t.created_by === null || t.created_by === undefined || Number(t.created_by) !== Number(currentUser.id)) return false;
+    }
+    if (dateRange) {
+      const [from, to] = dateRange;
+      const requested = t.createdAt ? new Date(t.createdAt) : null;
+      if (!requested) return false;
+      if (from && requested < from) return false;
+      if (to && requested > to) return false;
     }
     if (search) {
       const hay = `${t.id} ${t.requester} ${t.department} ${t.description}`.toLowerCase();
