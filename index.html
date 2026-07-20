@@ -876,7 +876,7 @@ function initials(fullname) {
 }
 
 function enterDashboard(user) {
-  currentUser = { fullname: user.fullname, username: user.username, department: user.department };
+  currentUser = { id: user.id, fullname: user.fullname, username: user.username, department: user.department };
   document.getElementById('authGate').classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
   document.getElementById('userMenuAvatar').textContent = initials(user.fullname);
