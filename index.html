@@ -1561,7 +1561,6 @@ function showRowContextMenu(evt, id) {
   menu.style.top = y + 'px';
   setTimeout(() => {
     document.addEventListener('click', closeRowContextMenu, { once: true });
-    document.addEventListener('contextmenu', closeRowContextMenu, { once: true });
   }, 0);
 }
 
