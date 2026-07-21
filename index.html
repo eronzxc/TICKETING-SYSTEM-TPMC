@@ -474,7 +474,7 @@
         <div class="row">
           <div class="field">
             <label>Name</label>
-            <input id="f_requester" placeholder="Juan dela Cruz">
+            <input id="f_requester" placeholder="Username">
           </div>
           <div class="field">
             <label>Department / Unit</label>
@@ -643,7 +643,7 @@
         <p class="sub" style="text-align:center;margin-bottom:14px;">Sign in to the IT dashboard</p>
         <div class="field">
           <label>Username</label>
-          <input id="login_username" placeholder="juan.delacruz">
+          <input id="login_username" placeholder="Type your username">
         </div>
         <div class="field">
           <label>Password</label>
@@ -661,7 +661,7 @@
         </div>
         <div class="field">
           <label>Username</label>
-          <input id="reg_username" placeholder="juan.delacruz">
+          <input id="reg_username" placeholder="Type your username">
         </div>
         <div class="field">
           <label>Department / Unit</label>
@@ -747,14 +747,6 @@
         <select id="departmentFilter" onchange="renderTickets()">
           <option value="All">All departments</option>
         </select>
-        <label class="filter-toggle">
-          <input type="checkbox" id="overdueFilter" onchange="renderTickets()">
-          <span>Overdue only</span>
-        </label>
-        <label class="filter-toggle">
-          <input type="checkbox" id="myTicketsFilter" onchange="renderTickets()">
-          <span>My tickets only</span>
-        </label>
         <select id="dateRangeFilter" onchange="onDateRangeChange()">
           <option value="All">Any date requested</option>
           <option value="Today">Today</option>
@@ -1451,8 +1443,6 @@ function renderTickets() {
   const priorityFilter = document.getElementById('priorityFilter').value;
   const categoryFilter = document.getElementById('categoryFilter').value;
   const departmentFilter = document.getElementById('departmentFilter').value;
-  const overdueOnly = document.getElementById('overdueFilter').checked;
-  const myTicketsOnly = document.getElementById('myTicketsFilter').checked;
   const dateRange = getDateRangeBounds();
 
   const filtered = tickets.filter(t => {
@@ -1460,13 +1450,6 @@ function renderTickets() {
     if (priorityFilter !== 'All' && t.priority !== priorityFilter) return false;
     if (categoryFilter !== 'All' && t.category !== categoryFilter) return false;
     if (departmentFilter !== 'All' && t.department !== departmentFilter) return false;
-    if (overdueOnly) {
-      const isOverdue = t.dueDate && t.status !== 'Resolved' && new Date(t.dueDate).getTime() < Date.now();
-      if (!isOverdue) return false;
-    }
-    if (myTicketsOnly) {
-      if (!currentUser || t.created_by === null || t.created_by === undefined || Number(t.created_by) !== Number(currentUser.id)) return false;
-    }
     if (dateRange) {
       const [from, to] = dateRange;
       const requested = t.createdAt ? new Date(t.createdAt) : null;
