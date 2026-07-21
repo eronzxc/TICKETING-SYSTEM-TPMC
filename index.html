@@ -287,6 +287,35 @@
   .ticket-table tbody tr:last-child { border-bottom: none; }
   .ticket-table tbody tr:hover { background: var(--surface-2); }
   .ticket-table tbody tr.row-selected { background: var(--teal-tint); }
+  .row-context-menu {
+    position: fixed;
+    z-index: 1000;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    padding: 6px;
+    min-width: 160px;
+  }
+  .row-context-menu button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: none;
+    border: none;
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .row-context-menu button:hover { background: var(--surface-2); }
+  .row-context-menu button.danger { color: #c0392b; }
+  .row-context-menu button.danger:hover { background: #fdecea; }
+  .row-context-menu hr { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
   .ticket-table td {
     padding: 10px 12px;
     vertical-align: middle;
@@ -1364,6 +1393,7 @@ function escapeHTML(str) {
 }
 
 let selectedTicketId = null;
+let detailOpen = false;
 
 async function postReply(id) {
   const t = tickets.find(x => x.id === id);
@@ -1482,7 +1512,7 @@ function renderTickets() {
       const isOverdue = t.dueDate && t.status !== 'Resolved' && new Date(t.dueDate).getTime() < Date.now();
       const dueStr = t.dueDate ? new Date(t.dueDate).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}) : '';
       return `
-        <tr class="${t.id===selectedTicketId?'row-selected':''}" onclick="openTicketDetail('${t.id}')">
+        <tr class="${t.id===selectedTicketId?'row-selected':''}" onclick="selectTicketRow('${t.id}')" oncontextmenu="showRowContextMenu(event, '${t.id}'); return false;">
           <td class="td-id">${t.id}</td>
           <td class="td-summary">${escapeHTML(summaryOf(t))}</td>
           <td>${escapeHTML(t.requester||'')}</td>
@@ -1499,15 +1529,50 @@ function renderTickets() {
   }
 
   // keep detail panel in sync (e.g. if the selected ticket got filtered out)
-  if (selectedTicketId && filtered.some(t => t.id === selectedTicketId)) {
+  if (detailOpen && selectedTicketId && filtered.some(t => t.id === selectedTicketId)) {
     renderTicketDetail(selectedTicketId);
-  } else if (selectedTicketId) {
+  } else if (detailOpen && selectedTicketId) {
     closeTicketDetail();
   }
 }
 
+function selectTicketRow(id) {
+  selectedTicketId = (selectedTicketId === id) ? null : id;
+  renderTickets();
+}
+
+function showRowContextMenu(evt, id) {
+  closeRowContextMenu();
+  selectedTicketId = id;
+  renderTickets();
+  const t = tickets.find(x => x.id === id);
+  const menu = document.createElement('div');
+  menu.className = 'row-context-menu';
+  menu.id = 'rowContextMenu';
+  let html = `<button onclick="closeRowContextMenu(); openTicketDetail('${id}')">👁 View</button>`;
+  if (t && isIT()) {
+    html += `<button onclick="closeRowContextMenu(); openEditModal('${id}')">✎ Edit</button>`;
+  }
+  menu.innerHTML = html;
+  document.body.appendChild(menu);
+  const x = Math.min(evt.clientX, window.innerWidth - 180);
+  const y = Math.min(evt.clientY, window.innerHeight - (t && isIT() ? 100 : 70));
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  setTimeout(() => {
+    document.addEventListener('click', closeRowContextMenu, { once: true });
+    document.addEventListener('contextmenu', closeRowContextMenu, { once: true });
+  }, 0);
+}
+
+function closeRowContextMenu() {
+  const menu = document.getElementById('rowContextMenu');
+  if (menu) menu.remove();
+}
+
 async function openTicketDetail(id) {
   selectedTicketId = id;
+  detailOpen = true;
   editingCommentId = null;
   renderTickets();
   document.getElementById('ticketDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1524,6 +1589,7 @@ async function openTicketDetail(id) {
 
 function closeTicketDetail() {
   selectedTicketId = null;
+  detailOpen = false;
   editingCommentId = null;
   const panel = document.getElementById('ticketDetail');
   panel.classList.add('hidden');
