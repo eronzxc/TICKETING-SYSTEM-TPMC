@@ -452,8 +452,33 @@
   @media (max-width: 720px) {
     .ticket-detail { grid-template-columns: 1fr; }
     .ticket-detail-main { border-right: none; border-bottom: 1px solid var(--border); }
-    .ticket-table-wrap { overflow-x: auto; }
+    .ticket-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   }
+
+  /* Tablet: tighten side padding, let stats stay 3-across but breathe less */
+  @media (max-width: 900px) {
+    .wrap { padding: 1.25rem 1.25rem 2rem; }
+    .stats { gap: 8px; }
+  }
+
+  /* Phone: stack the header, shrink type, single-column stats, full-width buttons */
+  @media (max-width: 600px) {
+    .wrap { padding: 1rem 0.85rem 2rem; }
+    h1 { font-size: 19px; }
+    header { gap: 10px; }
+    header .btn-secondary, header button.primary { flex: 1 1 auto; }
+    .stats { grid-template-columns: 1fr 1fr; }
+    .stats .stat:last-child:nth-child(3) { grid-column: 1 / -1; }
+    .filters { gap: 6px; }
+    .filters input#searchInput { flex: 1 1 100%; }
+    .filters select { flex: 1 1 calc(50% - 6px); width: auto; }
+    .filters select#dateRangeFilter { flex: 1 1 100%; width: auto; }
+    .date-range-group { flex: 1 1 100%; }
+    .date-range-group input[type=date] { flex: 1 1 0; width: auto; }
+    .modal-overlay { padding: 0; align-items: stretch; }
+    .modal-card { max-width: 100%; max-height: 100vh; height: 100%; border-radius: 0; }
+  }
+
   .ticket-attachment { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
   .ticket-attachment img {
     width: 72px; height: 72px; object-fit: cover; border-radius: 8px;
