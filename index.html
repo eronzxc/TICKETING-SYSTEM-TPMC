@@ -286,6 +286,9 @@
   }
   .ticket-table tbody tr:last-child { border-bottom: none; }
   .ticket-table tbody tr:hover { background: var(--surface-2); }
+  @media (pointer: coarse) {
+    .ticket-table tbody tr { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  }
   .ticket-table tbody tr.row-selected { background: var(--teal-tint); }
   .row-context-menu {
     position: fixed;
@@ -1537,7 +1540,7 @@ function renderTickets() {
       const isOverdue = t.dueDate && t.status !== 'Resolved' && new Date(t.dueDate).getTime() < Date.now();
       const dueStr = t.dueDate ? new Date(t.dueDate).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}) : '';
       return `
-        <tr class="${t.id===selectedTicketId?'row-selected':''}" onclick="selectTicketRow('${t.id}')" oncontextmenu="showRowContextMenu(event, '${t.id}'); return false;">
+        <tr class="${t.id===selectedTicketId?'row-selected':''}" onclick="selectTicketRow('${t.id}')" oncontextmenu="showRowContextMenu(event, '${t.id}'); return false;" ontouchstart="handleRowTouchStart(event, '${t.id}')" ontouchmove="handleRowTouchMove(event)" ontouchend="handleRowTouchEnd(event)" ontouchcancel="clearTimeout(touchTimer)">
           <td class="td-id">${t.id}</td>
           <td class="td-summary">${escapeHTML(summaryOf(t))}</td>
           <td>${escapeHTML(t.requester||'')}</td>
@@ -1564,6 +1567,41 @@ function renderTickets() {
 function selectTicketRow(id) {
   selectedTicketId = (selectedTicketId === id) ? null : id;
   renderTickets();
+}
+
+let touchTimer = null;
+let touchLongPressFired = false;
+let touchStartX = 0, touchStartY = 0;
+
+function handleRowTouchStart(evt, id) {
+  touchLongPressFired = false;
+  const touch = evt.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+  clearTimeout(touchTimer);
+  touchTimer = setTimeout(() => {
+    touchLongPressFired = true;
+    if (navigator.vibrate) navigator.vibrate(15);
+    showRowContextMenu({ clientX: touchStartX, clientY: touchStartY }, id);
+  }, 500);
+}
+
+function handleRowTouchMove(evt) {
+  // only cancel if the finger actually moved (scrolling), not on tiny jitter
+  const touch = evt.touches[0];
+  if (!touch) return;
+  const dx = Math.abs(touch.clientX - touchStartX);
+  const dy = Math.abs(touch.clientY - touchStartY);
+  if (dx > 10 || dy > 10) clearTimeout(touchTimer);
+}
+
+function handleRowTouchEnd(evt) {
+  clearTimeout(touchTimer);
+  if (touchLongPressFired) {
+    // long-press already opened the menu — stop this from also firing
+    // as a tap (which would just re-select the row underneath the menu)
+    evt.preventDefault();
+  }
 }
 
 function showRowContextMenu(evt, id) {
