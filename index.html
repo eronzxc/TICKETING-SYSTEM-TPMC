@@ -529,7 +529,7 @@
           <button class="user-menu-item" onclick="logout()">Logout</button>
         </div>
       </div>
-      <button class="btn-secondary hidden" id="deletedBtn" style="width:auto;" onclick="openDeletedModal()">🗑 Recently deleted</button>
+      <button class="btn-secondary hidden" id="deletedBtn" style="width:auto;" onclick="openDeletedModal()">Recently deleted</button>
       <button class="tab-btn active hidden" id="tabSubmitBtn" onclick="openSubmitModal()">+ Submit a concern</button>
     </div>
   </header>
@@ -595,11 +595,12 @@
           <div class="field">
             <label>Category</label>
             <select id="f_category">
+              <option>Account / Password</option>
+              <option>Encoding</option>
               <option>Hardware</option>
               <option>Network / Internet</option>
-              <option>Software / System</option>
               <option>Printer</option>
-              <option>Account / Password</option>
+              <option>Software / System</option>
               <option>Others</option>
             </select>
           </div>
@@ -708,7 +709,64 @@
     </div>
   </div>
 
-  <div id="deleteConfirmView" class="modal-overlay hidden">
+  <div id="forgotPasswordView" class="modal-overlay hidden" style="z-index:1100;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Forgot password</h2>
+        <button class="ticket-detail-close" onclick="closeForgotPassword()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="fpStep1">
+          <p class="sub" style="margin-bottom:12px;">Enter the email address on your account. We'll generate a reset code for it.</p>
+          <div class="field">
+            <label>Email</label>
+            <input type="email" id="fp_email" placeholder="you@example.com">
+          </div>
+          <p class="err hidden" id="fpStep1Error"></p>
+        </div>
+        <div id="fpStep2" class="hidden">
+          <p class="sub" id="fpStep2Msg" style="margin-bottom:12px;"></p>
+          <div class="field">
+            <label>Reset code</label>
+            <input id="fp_code" placeholder="6-digit code" maxlength="6">
+          </div>
+          <div class="field">
+            <label>New password</label>
+            <input type="password" id="fp_password" placeholder="••••••••">
+          </div>
+          <div class="field">
+            <label>Confirm new password</label>
+            <input type="password" id="fp_password2" placeholder="••••••••">
+          </div>
+          <p class="err hidden" id="fpStep2Error"></p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeForgotPassword()">Cancel</button>
+        <button class="primary" id="fpStep1Btn" style="width:auto;" onclick="requestResetCode()">Send reset code</button>
+        <button class="primary hidden" id="fpStep2Btn" style="width:auto;" onclick="submitPasswordReset()">Reset password</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="restoreConfirmView" class="modal-overlay hidden" style="z-index:1100;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Restore ticket</h2>
+        <button class="ticket-detail-close" onclick="closeRestoreConfirm()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="sub" id="restoreConfirmMsg"></p>
+        <p class="err hidden" id="restoreConfirmError" style="margin-top:8px;"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeRestoreConfirm()">Cancel</button>
+        <button class="primary" id="restoreConfirmBtn" style="width:auto;" onclick="performRestoreTicket()">Yes, restore this ticket</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="deleteConfirmView" class="modal-overlay hidden" style="z-index:1100;">
     <div class="modal-card">
       <div class="modal-header">
         <h2>Delete ticket</h2>
@@ -772,17 +830,24 @@
         </div>
         <p class="err hidden" id="loginError">Incorrect username or password.</p>
         <button class="primary" onclick="login()">Login</button>
-        <p class="meta" style="margin-top:12px;text-align:center;">No account yet? <a href="#" onclick="showRegister();return false;">Register here</a></p>
+        <p class="meta" style="margin-top:12px;text-align:center;">
+          <a href="#" onclick="openForgotPassword();return false;">Forgot password?</a>
+        </p>
+        <p class="meta" style="margin-top:4px;text-align:center;">No account yet? <a href="#" onclick="showRegister();return false;">Register here</a></p>
       </div>
       <div id="registerForm" class="hidden">
         <p class="sub" style="text-align:center;margin-bottom:14px;">Create an IT staff account</p>
         <div class="field">
           <label>Full name</label>
-          <input id="reg_fullname" placeholder="Juan dela Cruz">
+          <input id="reg_fullname" placeholder="Type your full name">
         </div>
         <div class="field">
           <label>Username</label>
           <input id="reg_username" placeholder="Type your username">
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="reg_email" placeholder="you@example.com">
         </div>
         <div class="field">
           <label>Department / Unit</label>
@@ -844,7 +909,7 @@
       <div class="filters">
         <input id="searchInput" placeholder="Search ticket, name, department..." oninput="renderTickets()">
         <select id="statusFilter" onchange="renderTickets()">
-          <option value="All">All statuses</option>
+          <option value="All">All ongoing statuses</option>
           <option>Open</option>
           <option>In progress</option>
           <option>Resolved</option>
@@ -858,11 +923,12 @@
         </select>
         <select id="categoryFilter" onchange="renderTickets()">
           <option value="All">All categories</option>
+          <option>Account / Password</option>
+          <option>Encoding</option>
           <option>Hardware</option>
           <option>Network / Internet</option>
-          <option>Software / System</option>
           <option>Printer</option>
-          <option>Account / Password</option>
+          <option>Software / System</option>
           <option>Others</option>
         </select>
         <select id="departmentFilter" onchange="renderTickets()">
@@ -879,6 +945,7 @@
           <input type="date" id="dateFrom" onchange="renderTickets()">
           <input type="date" id="dateTo" onchange="renderTickets()">
         </span>
+        <button class="btn-secondary" style="width:auto;white-space:nowrap;" onclick="exportTicketsCSV()">⬇ Export CSV</button>
       </div>
       <div class="ticket-table-wrap">
         <table class="ticket-table">
@@ -975,16 +1042,137 @@ function showRegister() {
   document.getElementById('registerForm').classList.remove('hidden');
 }
 
+let resetEmail = null;
+
+function openForgotPassword() {
+  resetEmail = null;
+  document.getElementById('fp_email').value = '';
+  document.getElementById('fp_code').value = '';
+  document.getElementById('fp_password').value = '';
+  document.getElementById('fp_password2').value = '';
+  document.getElementById('fpStep1Error').classList.add('hidden');
+  document.getElementById('fpStep2Error').classList.add('hidden');
+  document.getElementById('fpStep1').classList.remove('hidden');
+  document.getElementById('fpStep2').classList.add('hidden');
+  document.getElementById('fpStep1Btn').classList.remove('hidden');
+  document.getElementById('fpStep2Btn').classList.add('hidden');
+  document.getElementById('forgotPasswordView').classList.remove('hidden');
+}
+
+function closeForgotPassword() {
+  document.getElementById('forgotPasswordView').classList.add('hidden');
+}
+
+async function requestResetCode() {
+  const email = document.getElementById('fp_email').value.trim().toLowerCase();
+  const errEl = document.getElementById('fpStep1Error');
+  const btn = document.getElementById('fpStep1Btn');
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent = 'Please enter a valid email address.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  errEl.classList.add('hidden');
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${API_AUTH}/forgot_password.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Something went wrong. Please try again.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    resetEmail = email;
+    document.getElementById('fpStep2Msg').innerHTML =
+      `We've sent a 6-digit reset code to <strong>${escapeHTML(email)}</strong>. ` +
+      `Check your inbox (and spam folder) — the code is valid for 15 minutes.`;
+    document.getElementById('fpStep1').classList.add('hidden');
+    document.getElementById('fpStep2').classList.remove('hidden');
+    document.getElementById('fpStep1Btn').classList.add('hidden');
+    document.getElementById('fpStep2Btn').classList.remove('hidden');
+  } catch (e) {
+    errEl.textContent = 'Could not reach the server. Make sure Apache/MySQL is running in XAMPP.';
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function submitPasswordReset() {
+  const code = document.getElementById('fp_code').value.trim();
+  const password = document.getElementById('fp_password').value;
+  const password2 = document.getElementById('fp_password2').value;
+  const errEl = document.getElementById('fpStep2Error');
+  const btn = document.getElementById('fpStep2Btn');
+
+  if (!code || !password) {
+    errEl.textContent = 'Please fill in all fields.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (password.length < 6) {
+    errEl.textContent = 'Password must be at least 6 characters.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (password !== password2) {
+    errEl.textContent = 'Passwords do not match.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  errEl.classList.add('hidden');
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${API_AUTH}/reset_password.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email: resetEmail, code, password, confirmPassword: password2 })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Something went wrong. Please try again.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    closeForgotPassword();
+    showLogin();
+    const loginErrEl = document.getElementById('loginError');
+    loginErrEl.textContent = 'Password reset successful. Please log in with your new password.';
+    loginErrEl.style.color = 'var(--teal-dark)';
+    loginErrEl.classList.remove('hidden');
+  } catch (e) {
+    errEl.textContent = 'Could not reach the server. Make sure Apache/MySQL is running in XAMPP.';
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 async function register() {
   const fullname = document.getElementById('reg_fullname').value.trim();
   const username = document.getElementById('reg_username').value.trim().toLowerCase();
+  const email = document.getElementById('reg_email').value.trim().toLowerCase();
   const department = document.getElementById('reg_department').value;
   const password = document.getElementById('reg_password').value;
   const password2 = document.getElementById('reg_password2').value;
   const errEl = document.getElementById('registerError');
 
-  if (!fullname || !username || !department || !password) {
+  if (!fullname || !username || !email || !department || !password) {
     errEl.textContent = "Please fill in all fields.";
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent = "Please enter a valid email address.";
     errEl.classList.remove('hidden');
     return;
   }
@@ -1004,7 +1192,7 @@ async function register() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ fullname, username, department, password, confirmPassword: password2 })
+      body: JSON.stringify({ fullname, username, email, department, password, confirmPassword: password2 })
     });
     const data = await res.json();
     if (!res.ok) {
@@ -1035,6 +1223,7 @@ async function login() {
     const data = await res.json();
     if (!res.ok) {
       errEl.textContent = data.error || "Incorrect username or password.";
+      errEl.style.color = '';
       errEl.classList.remove('hidden');
       return;
     }
@@ -1042,6 +1231,7 @@ async function login() {
     enterDashboard(data.user);
   } catch (e) {
     errEl.textContent = "Could not reach the server. Make sure Apache/MySQL is running in XAMPP.";
+    errEl.style.color = '';
     errEl.classList.remove('hidden');
   }
 }
@@ -1561,6 +1751,45 @@ function populateDepartmentFilter() {
   if (current !== 'All' && depts.includes(current)) sel.value = current;
 }
 
+let lastFilteredTickets = [];
+
+function csvEscape(val) {
+  const s = (val === null || val === undefined) ? '' : String(val);
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function exportTicketsCSV() {
+  const rows = lastFilteredTickets;
+  if (!rows || rows.length === 0) {
+    alert('No tickets to export with the current filters.');
+    return;
+  }
+  const headers = ['ID','Summary','Requester','Department','Priority','Category','Status','Date Requested','Date Resolved','Resolved By','Due Date'];
+  const lines = [headers.map(csvEscape).join(',')];
+  rows.forEach(t => {
+    const requestedStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}) : '';
+    const resolvedStr = t.resolvedAt ? new Date(t.resolvedAt).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}) : '';
+    const dueStr = t.dueDate ? new Date(t.dueDate).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}) : '';
+    lines.push([
+      t.id, summaryOf(t), t.requester||'', t.department||'', t.priority||'', t.category||'',
+      t.status||'', requestedStr, resolvedStr, t.resolvedBy||'', dueStr
+    ].map(csvEscape).join(','));
+  });
+  // Leading BOM so Excel correctly detects UTF-8 (avoids garbled special characters).
+  const csvContent = '\uFEFF' + lines.join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `tpmc-tickets-${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function renderTickets() {
   populateDepartmentFilter();
 
@@ -1572,7 +1801,14 @@ function renderTickets() {
   const dateRange = getDateRangeBounds();
 
   const filtered = tickets.filter(t => {
-    if (statusFilter !== 'All' && t.status !== statusFilter) return false;
+    // By default (no status filter chosen) keep the table focused on
+    // actionable tickets — Resolved ones are hidden. Explicitly picking
+    // "Resolved" in the filter still shows them.
+    if (statusFilter === 'All') {
+      if (t.status === 'Resolved') return false;
+    } else if (t.status !== statusFilter) {
+      return false;
+    }
     if (priorityFilter !== 'All' && t.priority !== priorityFilter) return false;
     if (categoryFilter !== 'All' && t.category !== categoryFilter) return false;
     if (departmentFilter !== 'All' && t.department !== departmentFilter) return false;
@@ -1595,6 +1831,8 @@ function renderTickets() {
   document.getElementById('stats').innerHTML = ['Open','In progress','Resolved'].map(s =>
     `<div class="stat"><div class="num">${counts[s]||0}</div><div class="lbl">${s}</div></div>`
   ).join('');
+
+  lastFilteredTickets = filtered;
 
   const tbody = document.getElementById('ticketTableBody');
   if (filtered.length === 0) {
@@ -1984,9 +2222,29 @@ function renderDeletedTable(rows) {
   }).join('');
 }
 
-async function restoreTicket(id) {
-  if (!confirm(`Restore ticket ${id} back to the list?`)) return;
-  const errEl = document.getElementById('deletedError');
+let pendingRestoreId = null;
+
+function restoreTicket(id) {
+  pendingRestoreId = id;
+  document.getElementById('restoreConfirmMsg').textContent = `Restore ticket ${id} back to the list?`;
+  document.getElementById('restoreConfirmError').classList.add('hidden');
+  document.getElementById('restoreConfirmError').textContent = '';
+  document.getElementById('restoreConfirmView').classList.remove('hidden');
+}
+
+function closeRestoreConfirm() {
+  document.getElementById('restoreConfirmView').classList.add('hidden');
+  pendingRestoreId = null;
+}
+
+async function performRestoreTicket() {
+  if (!pendingRestoreId) return;
+  const id = pendingRestoreId;
+  const btn = document.getElementById('restoreConfirmBtn');
+  const errEl = document.getElementById('restoreConfirmError');
+  const deletedErrEl = document.getElementById('deletedError');
+  errEl.classList.add('hidden');
+  btn.disabled = true;
   try {
     const res = await fetch(`${API_TICKETS}/restore.php`, {
       method: 'POST',
@@ -2004,8 +2262,11 @@ async function restoreTicket(id) {
     errEl.textContent = 'Failed to restore the ticket. Please try again.';
     errEl.classList.remove('hidden');
     return;
+  } finally {
+    btn.disabled = false;
   }
-  errEl.classList.add('hidden');
+  deletedErrEl.classList.add('hidden');
+  closeRestoreConfirm();
   await loadDeletedTickets();
   await loadTickets();
 }
