@@ -11,14 +11,19 @@ $input = json_decode(file_get_contents('php://input'), true) ?? [];
 
 $fullname   = trim($input['fullname'] ?? '');
 $username   = trim($input['username'] ?? '');
+$email      = trim($input['email'] ?? '');
 $department = trim($input['department'] ?? '');
 $password   = $input['password'] ?? '';
 $confirm    = $input['confirmPassword'] ?? '';
 
 // ---- Validation ----
-if ($fullname === '' || $username === '' || $department === '' || $password === '') {
+if ($fullname === '' || $username === '' || $email === '' || $department === '' || $password === '') {
     http_response_code(400);
     die(json_encode(['error' => 'Please fill in all fields.']));
+}
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    http_response_code(400);
+    die(json_encode(['error' => 'Please enter a valid email address.']));
 }
 if (strlen($password) < 6) {
     http_response_code(400);
@@ -37,17 +42,27 @@ if ($stmt->fetch()) {
     die(json_encode(['error' => 'This username is already taken.']));
 }
 
+// Check duplicate email — needed since email is what "Forgot password"
+// looks the account up by.
+$stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
+$stmt->execute([$email]);
+if ($stmt->fetch()) {
+    http_response_code(409);
+    die(json_encode(['error' => 'This email is already registered.']));
+}
+
 $hash = password_hash($password, PASSWORD_DEFAULT);
 
 $stmt = $pdo->prepare(
-    'INSERT INTO users (fullname, username, password_hash, department) VALUES (?, ?, ?, ?)'
+    'INSERT INTO users (fullname, username, email, password_hash, department) VALUES (?, ?, ?, ?, ?)'
 );
-$stmt->execute([$fullname, $username, $hash, $department]);
+$stmt->execute([$fullname, $username, $email, $hash, $department]);
 
 $user = [
     'id'         => $pdo->lastInsertId(),
     'fullname'   => $fullname,
     'username'   => $username,
+    'email'      => $email,
     'department' => $department,
 ];
 

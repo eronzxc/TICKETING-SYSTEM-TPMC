@@ -29,6 +29,7 @@ $user = [
     'id'         => $row['id'],
     'fullname'   => $row['fullname'],
     'username'   => $row['username'],
+    'email'      => $row['email'] ?? null,
     'department' => $row['department'],
 ];
 
